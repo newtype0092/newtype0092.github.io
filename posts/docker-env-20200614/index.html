@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en"><meta charset="utf-8"><meta name="generator" content="Hugo 0.72.0" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark"><title>用Docker搭建测试环境&nbsp;&ndash;&nbsp;NewType0092</title><link rel="stylesheet" href="/css/core.min.9bc24a122d089cd2a9f3949422cf517fd7c7470f06633e30138ac0ba2b6cd3a0e056f942fb495933f8710f62d8731bac.css" integrity="sha384-m8JKEi0InNKp85SUIs9Rf9fHRw8GYz4wE4rAuits06DgVvlC&#43;0lZM/hxD2LYcxus"><meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="用Docker搭建测试环境" /><body><section id="header">
+    <div class="header wrap"><span class="header left-side"><a class="site home" href="/"><span class="site name">NewType0092</span></a></span>
+        <span class="header right-side"><div class="nav wrap"><nav class="nav"><a class="nav item" href="/categories/">Categories</a><a class="nav item" href="/tags/">Tags</a><a class="nav item" href="/about">About</a><a class="nav item" href="https://gohugo%2eio/"target="_blank">Hugo</a></nav></div></span></div><div class="site slogan"><span class="title">testing</span></div></section><section id="content"><div class="article-container"><section class="article header">
+    <h1 class="article title">用Docker搭建测试环境</h1><p class="article date">2020-06-14</p></section><article class="article markdown-body"><p>平常工作在提交代码前一般需要先在本地自测，一个灵活可配置的本地测试环境可以提高效率并减少BUG。
+之前使用过<code>php -S</code>启动local server的方式测试，但CLI的方式和FPM还是有一定的区别，而且其他相关的Nginx、MySQL等环境在MacOS下配置也比较麻烦，最终决定用Docker镜像来配置一个可配置的测试环境。</p>
+<h2 id="如何使用docker">如何使用Docker</h2>
+<p>简单来说，就是把我们需要运行的程序打包成一个Docker镜像镜像(image)，需要部署时，就用用这个镜像生成一个容器(container)，并用Docker程序控制容器的运行状态。
+容器类似于一个轻量的虚拟机，可以通过映射端口、磁盘等方式和宿主机交互。</p>
+<h4 id="以nginx为例配置一个简单的容器">以Nginx为例配置一个简单的容器</h4>
+<p>首先需要获取一个镜像。
+<a href="https://hub.docker.com"target="_blank">DockerHub</a>是官方提供的类似GitHub的容器托管网站，常见的开源项目都会在上面发布自己的容器，有些常用的环境也会有人打包好放在上面，我们一般只需要选择合适镜像直接使用就好。
+对于Nginx，可以在他们的<a href="https://hub.docker.com/_/nginx"target="_blank">DockerHub主页</a>看到当前可用的tags。</p>
+<p>Docker镜像的tag和git的tag类似，标记了某一个制定版本的容器镜像，一般开源项目都会根据软件自身版本来构建不同的镜像。</p>
+<p>当前首页显示的tags:</p>
+<pre><code>1.19.0, mainline, 1, 1.19, latest
+1.19.0-perl, mainline-perl, 1-perl, 1.19-perl, perl
+1.19.0-alpine, mainline-alpine, 1-alpine, 1.19-alpine, alpine
+1.19.0-alpine-perl, mainline-alpine-perl, 1-alpine-perl, 1.19-alpine-perl, alpine-perl
+1.18.0, stable, 1.18
+1.18.0-perl, stable-perl, 1.18-perl
+1.18.0-alpine, stable-alpine, 1.18-alpine
+1.18.0-alpine-perl, stable-alpine-perl, 1.18-alpine-perl
+</code></pre><p>每一行其实是对应一个镜像的多个tag，有一些大家通用的命名规则：</p>
+<ul>
+<li><code>latest</code> 最新版本，当前是1.19，该tag会随着版本更新，始终指向最新版</li>
+<li><code>stable</code> 稳定版本，当前是1.18，该tag会随着版本更新，始终指向稳定版</li>
+<li><code>-prel</code> 该后缀表示镜像默认包含prel模块，一些常用的模块、特性可能会用这种后缀的方式提供出单独的镜像</li>
+<li><code>-alpine</code> 使用Alpine作为基础的系统镜像，Alpine是一种高度精简的Linux系统，一般能比默认使用Ubuntu Linux的镜像节省80%左右的磁盘空间</li>
+</ul>
+<h4 id="关于镜像的选择">关于镜像的选择</h4>
+<ul>
+<li>最好不要选用不带版本号的tag，因为这种tag写到配置文件里，以后在其他的机器上部署时可能会下载到更新的版本，可能会有不兼容的问题。</li>
+<li>Alpine镜像占用的磁盘空间更少，尤其在生成多个容器实例的时候，节省的空间是客观的，目前还没有发现兼容问题，所以有Alpine镜像的时候我会优先选择。</li>
+<li>版本号一般建议选择x.y的形式，最后一位一般是完全不影响兼容的fix，可以保持最新，具体的语义化版本规则可以参照<a href="https://semver.org/"target="_blank">这里</a>。</li>
+</ul>
+<p>这里我们选择稳定版Alpine镜像<code>1.18-alpine</code>。</p>
+<h4 id="运行一个容器">运行一个容器</h4>
+<p>我们选择了容器后，只要最简单的一行命令就可以启动容器。</p>
+<p>MacOS环境下运行之前要保证Docker桌面程序正常运行。<img  src="/images/2020061403.jpg"
+        alt/></p>
+<p>使用<code>docker run</code>命令运行一个容器。</p>
+<pre><code>❰newtype0092❙~/test-docker❱✔≻ docker run --name test-nginx -d -p 8080:80 nginx:1.18-alpine
+Unable to find image 'nginx:1.18-alpine' locally
+1.18-alpine: Pulling from library/nginx
+cbdbe7a5bc2a: Pull complete
+6ade829cd166: Pull complete
+Digest: sha256:2668e65e1a36a749aa8b3a5297eee45504a4efea423ec2affcbbf85e31a9a571
+Status: Downloaded newer image for nginx:1.18-alpine
+b0badc92f5577274e72532c5e5b571aa9a1c2416b5ce372becc44d994a5e1ca4
+</code></pre><p><code>--name</code> 是个容器实例设置了一个名字，
+<code>-d</code> 表示在后台运行，
+<code>-p 8080:80</code> 表示将容器内部的80端口映射到本机的8080端口，
+执行成功以后，在浏览器里打开<code>http://localhost:8080/</code>就可以看到Nginx的默认欢迎页面了。</p>
+<p>此时通过<code>docker ps</code>可以看到容器运行的状态、端口映射等信息。</p>
+<pre><code>❰newtype0092❙~/test-docker❱✘≻ docker ps
+CONTAINER ID        IMAGE                         COMMAND                  CREATED             STATUS              PORTS                     NAMES
+b0badc92f557        nginx:1.18-alpine             &quot;nginx -g 'daemon of…&quot;   25 seconds ago      Up 23 seconds       0.0.0.0:8080-&gt;80/tcp      test-nginx
+</code></pre><p><code>CONTAINER ID</code>是这个容器的唯一标识，<code>IMAGE</code>是该容器使用的镜像，<code>NAMES</code>是我们自己起的别名，如果不再需要容器时，可以用<code>docker rm container_id_or_name</code>删除。
+默认只显示运行中的容器，想要查看所有需要加<code>-a</code>参数。</p>
+<h4 id="自定义镜像">自定义镜像</h4>
+<p>有时候官方开源的镜像不能满足我们的要求，或者启动时需要设置一些额外的参数，此时可以通过<code>Dockerfile</code>来创建自己的镜像。</p>
+<h4 id="以php为例创建新的镜像">以PHP为例创建新的镜像</h4>
+<p>首先我们新建一个目录，在里面创建一个名为<code>Dockerfile</code>的文件，内容如下:</p>
+<pre><code>❰newtype0092❙~/test-docker/test-php❱✔≻ cat Dockerfile
+FROM php:7.4-fpm-alpine
+WORKDIR /var/work
+RUN docker-php-ext-install pdo_mysql
+</code></pre><p>Dockerfile的内容起就是创建镜像需要执行的所有命令，我们的文件里只有3行内容。</p>
+<ul>
+<li><code>FROM</code>表示以<code>php:7.4-fpm-alpine</code>为基础创建我们的镜像</li>
+<li><code>WORKDIR</code>定义了我们PHP项目的目录</li>
+<li><code>RUN</code>是需要执行某个命令</li>
+</ul>
+<p>我们的项目里用到了<code>pdo_mysql</code>扩展，官方的镜像里默认是没有的，需要自行安装，官方提供了一个脚本<code>docker-php-ext-install</code>可以很方便的安装各种扩展，具体的目录可以在项目的<a href="https://github.com/mlocati/docker-php-extension-installer"target="_blank">GitHub主页</a>上查看。</p>
+<p>Dockerfile准备好以后我们需要用<code>docker build</code>命令创建我们的镜像。</p>
+<pre><code>❰newtype0092❙~/test-docker/test-php❱✔≻ docker build . -t test-php-pdo-mysql
+Sending build context to Docker daemon  2.048kB
+Step 1/3 : FROM php:7.4-fpm-alpine
+7.4-fpm-alpine: Pulling from library/php
+df20fa9351a1: Pull complete
+b358d6dbbdff: Pull complete
+0232d962484c: Pull complete
+0c1d3ac04d2a: Pull complete
+f15666bd1b72: Pull complete
+bdd68c77a304: Pull complete
+d363de3fb535: Pull complete
+20bc0086526a: Pull complete
+892c1e47da43: Pull complete
+f9adcf6eb967: Pull complete
+Digest: sha256:eea1af813b4e3c8d6833944360318d5b7cf58ea773a53a03448b22761f3f946a
+Status: Downloaded newer image for php:7.4-fpm-alpine
+ ---&gt; 78e945602ecc
+Step 2/3 : WORKDIR /var/work
+ ---&gt; Running in 9ffbc3b2c543
+Removing intermediate container 9ffbc3b2c543
+ ---&gt; 8a03a98cc09f
+Step 3/3 : RUN docker-php-ext-install pdo_mysql
+ ---&gt; Running in 4158bc235e9a
+
+ ...
+
+Removing intermediate container 4158bc235e9a
+ ---&gt; bc482070d091
+Successfully built bc482070d091
+Successfully tagged test-php-pdo-mysql:latest
+</code></pre><p>build过程中每执行一条命令，就会生成一个唯一的hash_id，类似于git的commit_id，最后一步的hash_id就是最终镜像的image_id。由于我们没有指定，构建出的镜像被自动打上了<code>latest</code>的tag，之后的操作中我们会用这个tag来指定这次创建的镜像。</p>
+<p>完成后，用<code>docker images</code>命令可以看到我们新创建的镜像。现在这个镜像已经可以像官方的镜像一样可以生成容器运行了。错误或者不需要的镜像可以用<code>docker rmi image_id_or_name</code>删除。</p>
+<pre><code>❰newtype0092❙~/test-docker/test-php❱✘≻ docker images
+REPOSITORY                                      TAG                 IMAGE ID            CREATED             SIZE
+test-php-pdo-mysql                              latest              bc482070d091        11 minutes ago      81.5MB
+php                                             7.4-fpm-alpine      78e945602ecc        3 days ago          81.4MB
+</code></pre><p>为了方便管理和分享，我们可以把生成的镜像上传到DockerHub上，和GitHub类似，我们需要创建一个仓库(Repository)，从web页面或者桌面程序都可以方便的创建新仓库。
+<img  src="/images/2020061404.jpg"
+        alt/>
+<img  src="/images/2020061405.jpg"
+        alt/></p>
+<p>我们创建了一个名为<code>newtype0092/php-pdo-mysql</code>的新仓库，然后根据仓库名为刚才创建的镜像打上新仓库的tag。
+这里因为没有对原有镜像做过多的修改，所以选择和PHP镜像同样的版本号作为tag。
+通过<code>docker images</code>命令可以看到，我们新建的tag和刚才build时的tag都指向同一个镜像<code>bc482070d091</code>。</p>
+<pre><code>❰newtype0092❙~/test-docker/test-php❱✔≻ docker tag test-php-pdo-mysql:latest newtype0092/php-pdo-mysql:7.4
+❰newtype0092❙~/test-docker/test-php❱✔≻ docker images
+REPOSITORY                                      TAG                 IMAGE ID            CREATED             SIZE
+test-php-pdo-mysql                              latest              bc482070d091        36 minutes ago      81.5MB
+newtype0092/php-pdo-mysql                       7.4                 bc482070d091        36 minutes ago      81.5MB
+docker tag local-image:tagname new-repo:tagname
+docker push new-repo:tagname
+</code></pre><p>这时就可以把创建好的镜像push到自己的仓库里。</p>
+<pre><code>❰newtype0092❙~/test-docker/test-php❱✔≻ docker push newtype0092/php-pdo-mysql:7.4
+The push refers to repository [docker.io/newtype0092/php-pdo-mysql]
+37b98648bd9e: Pushed
+6213a31d521c: Pushed
+34a97c178cf5: Mounted from library/php
+b2495d609c94: Mounted from library/php
+fcadda94fbd1: Mounted from library/php
+6a081885c846: Mounted from library/php
+c38bdf24ab21: Mounted from library/php
+0880ea739416: Mounted from library/php
+81c338ff74a3: Mounted from library/php
+308ef7bef157: Mounted from library/php
+d94df04fea90: Mounted from library/php
+50644c29ef5a: Mounted from library/php
+7.4: digest: sha256:e227f63265c0de8e00d945c5eb9a4e758164768ea9ef87b71a811de8ca560923 size: 2827
+</code></pre><p>上传完成就可以在自己的仓库里看到新的镜像了，之后在别的地方也可以用<code>docker pull newtype0092/php-pdo-mysql:7.4</code>下载这个镜像。</p>
+<p><img  src="/images/2020061406.jpg"
+        alt/></p>
+<h2 id="使用dockercompose管理容器">使用DockerCompose管理容器</h2>
+<p>使用Docker容器和写代码的思路是一样的，最好在每个容器里只做一件事，这样解耦能使容器更简单可控。当我们有多个容器配合使用时，可以用DockerCompose统一管理。
+配置非常简单，只需要名为<code>docker-compose.yml</code>的配置文件。</p>
+<h4 id="配置nginxphp环境">配置Nginx+PHP环境</h4>
+<p>我们新建一个目录，在里面创建一个配置文件，注意compose的配置文件是<code>yml</code>格式。</p>
+<pre><code>version: '3'
+
+networks:
+    backend:
+
+services:
+    php:
+        container_name: test-php
+        image: newtype0092/php-pdo-mysql:7.4
+        networks:
+            - backend
+        volumes:
+            - &quot;./phpdir:/var/work&quot;
+
+    nginx:
+        container_name: test-nginx
+        image: nginx:1.18-alpine
+        networks:
+            - backend
+        ports:
+            - 8080:80
+        volumes:
+            - &quot;./phpdir:/var/work&quot;
+</code></pre><ul>
+<li><code>version</code>是compose配置文件的版本，不同的版本在某些配置项上会有区别，这里我们使用当前最新的<code>3</code>。</li>
+<li><code>networks</code>表示建立虚拟网络，这里我们建立了一个名为<code>backend</code>的网络，完全使用默认配置。</li>
+<li><code>services</code>里包含了多个服务的配置，每个服务都会启动一个单独的Docker容器。
+<ul>
+<li><code>container_name</code>是我们给这个容器起的别名，用来单独控制某个容器。</li>
+<li><code>image</code>是这个容器实例化使用的镜像</li>
+<li><code>networks</code>表示将该容器加入虚拟网络</li>
+<li><code>ports</code>表示端口映射，左边为宿主机上的端口，右边为容器内的端口</li>
+<li><code>volumes</code>表示磁盘映射，左边为宿主机上的端口，右边为容器内的端口</li>
+</ul>
+</li>
+</ul>
+<p>这里我们创建了两个容器分别运行Nginx和PHP。</p>
+<p>这里PHP容器的<code>image</code>选项使用了刚才自己创建的镜像，使用前必须确认已经正常上传到DockerHub上。
+Nginx使用了官方的镜像。
+也可以使用一个本地build好的镜像，或者指定一个Dockerfile让compose在启动时根据需求去build。</p>
+<p>我们将Nginx容器的80端口映射到了宿主机，这样在启动后可以通过<code>http://localhost:8080/</code>访问我们的服务。
+PHP容器不需要从宿主机访问，所以不用配置端口映射，官方容器默认在<code>9000</code>端口启动fpm。</p>
+<p>我们在当前目录下创建了一个<code>phpdir</code>目录，暂时替代PHP项目目录，将这个目录同时挂载在两个镜像的<code>/var/work</code>目录下，方便从外部修改。
+注意这个目录是我们之前创建PHP镜像时在Dockerfile里用<code>WORKDIR</code>命令设置的默认工作目录，如果不手动设置，则应该使用官方镜像里默认的工作目录<code>/var/www/html</code>。</p>
+<p>我们像在该目录下创建一个目录<code>www</code>并写入两个文件测试。
+这个目录结构与我们的PHP项目相同，不是必须的。</p>
+<pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ cat phpdir/www/index.html
+hello
+❰newtype0092❙~/test-docker/compose❱✔≻ cat phpdir/www/index.php
+&lt;?php
+    phpinfo();
+</code></pre><p>在compose文件所在的目录下使用<code>docker-compose up</code>命令可以启动这个compose。
+<code>-d</code>参数可以是compose在后台运行。</p>
+<pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ docker-compose up
+Creating network &quot;compose_backend&quot; with the default driver
+Creating test-php   ... done
+Creating test-nginx ... done
+Attaching to test-php, test-nginx
+test-php | [15-Jun-2020 10:44:53] NOTICE: fpm is running, pid 1
+test-php | [15-Jun-2020 10:44:53] NOTICE: ready to handle connections
+test-nginx | 172.29.0.1 - - [15/Jun/2020:10:45:00 +0000] &quot;GET / HTTP/1.1&quot; 200 612 &quot;-&quot; &quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36&quot; &quot;-&quot;
+</code></pre><p>使用<code>docker-compose ps</code>命令可以查看容器的状态，命令会显示容器启动执行的命令、运行状态、端口映射等。
+使用<code>docker-compose stop</code>可以停止整个容器。
+其他使用方式可以查看<code>docker-compose help</code>。</p>
+<pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ docker-compose ps
+   Name                 Command              State          Ports
+-------------------------------------------------------------------------
+test-nginx   nginx -g daemon off;            Up      0.0.0.0:8080-&gt;80/tcp
+test-php     docker-php-entrypoint php-fpm   Up      9000/tcp
+</code></pre><p>现在在浏览器打开<code>http://localhost:8080/</code>就可以看到Nginx默认的欢迎页面，我们需要配置Nginx的config文件让请求转发到php-fpm服务。</p>
+<p>使用<code>docker exec</code>命令可以在容器内执行命令，使用<code>-it</code>参数打开一个shell可以让我们在容器内操作，就像用ssh登陆一台虚拟机一样。</p>
+<ul>
+<li>我们使用的Alpine镜像里没有安装<code>bash</code>，只能使用<code>sh</code>。</li>
+</ul>
+<pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ docker exec -it test-nginx sh
+/ # ls
+bin    dev    etc    home   lib    media  mnt    opt    proc   root   run    sbin   srv    sys    tmp    usr    var
+</code></pre><p>修改默认的config文件<code>vi /etc/nginx/conf.d/default.conf</code>，并重启Nginx。</p>
+<pre><code>### 注释Nginx默认规则
+    #location / {
+    #    root   /usr/share/nginx/html;
+    #    index  index.html index.htm;
+    #}
+
+### 定义全局的root和index，uri转到index.php
+    root /var/work/www;
+    index index.html index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+### 打开默认fastcgi配置
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    location ~ \.php$ {
+        ### 使用全局root变量
+        #root           html;
+
+        ### PHP并不运行在当前容器里，这里需要填PHP容器的名字作为地址，也可以使用一个共享的sock文件
+        #fastcgi_pass   127.0.0.1:9000;
+        fastcgi_pass   test-php:9000;
+
+        fastcgi_index  index.php;
+
+        ### 这里的 /scripts 需要替换成我们设定的root变量
+        #fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+        fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+
+        include        fastcgi_params;
+    }
+</code></pre><pre><code>/ # nginx -s reload
+2020/06/15 17:00:26 [notice] 17#17: signal process started
+</code></pre><p>此时可以查看我们刚才创建的两个测试文件。
+在phpinfo中可以看到之前在镜像里安装的pdo_mysql扩展已经生效。</p>
+<pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ curl http://localhost:8080
+hello
+</code></pre><p><img  src="/images/2020061407.jpg"
+        alt/>
+<img  src="/images/2020061408.jpg"
+        alt/></p>
+<h4 id="映射更多的目录">映射更多的目录</h4>
+<p>TODO</p>
+</article><section class="article labels"><a class="tag" href=/tags/docker/>docker</a></section></div>
+<div class="article bottom"><section class="article navigation"><p><a class="link" href="/posts/my-first-post-2/"><span class="iconfont icon-article"></span>Post</a></p></section></div></section><section id="footer"><div class="footer-wrap">
+    <p class="copyright">©2020 NewType0092.</p>
+    <p class="powerby"><span>Powered by </span><a href="https://gohugo.io" 
+        target="_blank">Hugo</a><span> and the </span><a href="https://themes.gohugo.io/hugo-notepadium/" 
+        target="_blank">Notepadium</a></p>
+</div></section><script src="/js/prism.min.28f2bfd6dfaa7ad0e8b973373bb7db234d27a2faafc26d5ffd2de4c2b1b5f2bf80011f2e2976dc9fb364abb13f63ebdc.js" integrity="sha384-KPK/1t&#43;qetDouXM3O7fbI00novqvwm1f/S3kwrG18r&#43;AAR8uKXbcn7Nkq7E/Y&#43;vc"></script></body>
+
+</html>

@@ -1,14 +1,76 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>Tags on My New Hugo Site</title>
-    <link>http://example.org/tags/</link>
-    <description>Recent content in Tags on My New Hugo Site</description>
+    <title>Tags on NewType0092</title>
+    <link>/tags/</link>
+    <description>Recent content in Tags on NewType0092</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
+    <language>zh-cn</language>
+    <copyright>©2020 NewType0092.</copyright>
+    <lastBuildDate>Sun, 14 Jun 2020 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="http://example.org/tags/index.xml" rel="self" type="application/rss+xml" />
+        <atom:link href="/tags/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>docker</title>
+      <link>/tags/docker/</link>
+      <pubDate>Sun, 14 Jun 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/docker/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>css</title>
+      <link>/tags/css/</link>
+      <pubDate>Sun, 14 Jun 2020 00:00:00 +0800</pubDate>
+      
+      <guid>/tags/css/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>html</title>
+      <link>/tags/html/</link>
+      <pubDate>Sun, 14 Jun 2020 00:00:00 +0800</pubDate>
+      
+      <guid>/tags/html/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>markdown</title>
+      <link>/tags/markdown/</link>
+      <pubDate>Sun, 14 Jun 2020 00:00:00 +0800</pubDate>
+      
+      <guid>/tags/markdown/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>themes</title>
+      <link>/tags/themes/</link>
+      <pubDate>Sun, 14 Jun 2020 00:00:00 +0800</pubDate>
+      
+      <guid>/tags/themes/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>hugo</title>
+      <link>/tags/hugo/</link>
+      <pubDate>Sun, 28 Sep 2014 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/hugo/</guid>
+      <description></description>
+      
+    </item>
     
   </channel>
 </rss>
