@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en"><meta charset="utf-8"><meta name="generator" content="Hugo 0.72.0" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark"><title>代码重构&nbsp;&ndash;&nbsp;NewType0092</title><link rel="stylesheet" href="/css/core.min.9bc24a122d089cd2a9f3949422cf517fd7c7470f06633e30138ac0ba2b6cd3a0e056f942fb495933f8710f62d8731bac.css" integrity="sha384-m8JKEi0InNKp85SUIs9Rf9fHRw8GYz4wE4rAuits06DgVvlC&#43;0lZM/hxD2LYcxus"><meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="代码重构" /><body><section id="header">
+    <div class="header wrap"><span class="header left-side"><a class="site home" href="/"><span class="site name">NewType0092</span></a></span>
+        <span class="header right-side"><div class="nav wrap"><nav class="nav"><a class="nav item" href="/categories/">Categories</a><a class="nav item" href="/tags/">Tags</a><a class="nav item" href="/about">About</a><a class="nav item" href="https://gohugo%2eio/"target="_blank">Hugo</a></nav></div></span></div><div class="site slogan"><span class="title">testing</span></div></section><section id="content"><div class="article-container"><section class="article header">
+    <h1 class="article title">代码重构</h1><p class="article date">2020-06-20</p></section><article class="article markdown-body"><p>今天重构之前的代码时，发现之前同事遗留下的一段代码：</p>
+<div class="highlight"><pre class="chroma"><code class="language-php" data-lang="php">// 参数结构
+$list = [
+    [&#39;id&#39; =&gt;  &#39;1&#39;, &#39;parent_id&#39; =&gt; &#39;0&#39;],
+    [&#39;id&#39; =&gt;  &#39;2&#39;, &#39;parent_id&#39; =&gt; &#39;0&#39;],
+    [&#39;id&#39; =&gt;  &#39;3&#39;, &#39;parent_id&#39; =&gt; &#39;0&#39;],
+    [&#39;id&#39; =&gt;  &#39;4&#39;, &#39;parent_id&#39; =&gt; &#39;1&#39;],
+    [&#39;id&#39; =&gt;  &#39;5&#39;, &#39;parent_id&#39; =&gt; &#39;1&#39;],
+    [&#39;id&#39; =&gt;  &#39;6&#39;, &#39;parent_id&#39; =&gt; &#39;3&#39;],
+    [&#39;id&#39; =&gt;  &#39;7&#39;, &#39;parent_id&#39; =&gt; &#39;3&#39;],
+    [&#39;id&#39; =&gt;  &#39;8&#39;, &#39;parent_id&#39; =&gt; &#39;4&#39;],
+    [&#39;id&#39; =&gt;  &#39;9&#39;, &#39;parent_id&#39; =&gt; &#39;4&#39;],
+    [&#39;id&#39; =&gt; &#39;10&#39;, &#39;parent_id&#39; =&gt; &#39;4&#39;],
+    [&#39;id&#39; =&gt; &#39;11&#39;, &#39;parent_id&#39; =&gt; &#39;5&#39;],
+    [&#39;id&#39; =&gt; &#39;12&#39;, &#39;parent_id&#39; =&gt; &#39;5&#39;],
+    [&#39;id&#39; =&gt; &#39;13&#39;, &#39;parent_id&#39; =&gt; &#39;6&#39;],
+    [&#39;id&#39; =&gt; &#39;14&#39;, &#39;parent_id&#39; =&gt; &#39;7&#39;],
+    [&#39;id&#39; =&gt; &#39;15&#39;, &#39;parent_id&#39; =&gt; &#39;7&#39;],
+];
+
+function make_tree($list, $pk = &#39;id&#39;, $pid = &#39;parent_id&#39;, $child = &#39;_child&#39;, $root = 0)
+{
+    $tree = array();
+    foreach ($list as $key =&gt; $val) {
+        if ($val[$pid] == $root) {
+            unset($list[$key]);
+            if (!empty($list)) {
+                $child = make_tree($list, $pk, $pid, $child, $val[$pk]);
+                if (!empty($child)) {
+                    $val[&#39;_child&#39;] = $child;
+                }
+            }
+            $tree[] = $val;
+        }
+    }
+    return $tree;
+}
+</code></pre></div><p>看起来是一个用列表数据构建树结构的方法，但代码比较混乱，以致于我一眼没看出来有几个变量到底是干什么的。</p>
+<p>首先说编码规范的问题：</p>
+<p><code>$pk</code>看起来应该primary_key的意思，但实际表示的是key_name而不是value。
+但第三个用来表示parent_id的key_name的参数却用了<code>$pid</code>这种完全不同的命名，第一眼看起来误以为应该传一个id。
+第四第五个参数<code>$child</code>和<code>$root</code>，看起来应该是一个节点或者节点树，但实际却分别是key_name和节点id，完全混乱。</p>
+<p>好的变量名能大大提高代码阅读速度，提高可维护性，反之随意而混乱的变量名会经常把人带进沟里&hellip;
+合理的变量名可以像这样<code>makeTree($list, $primaryIdKey, $parentIdKey, $childrenKey, $rootId)</code>。</p>
+<p>在逻辑里可以看到虽然把<code>_child</code>这个用于存放子节点的key通过默认参数传入，代码里还是用了硬编码，很无语。
+同时在保存递归调用结果时，又用了一个同名的变量<code>$child</code>，覆盖了参数里的变量。</p>
+<p><strong>绝对不要使用用含义不同的同名变量。</strong></p>
+<p>后定义的同名变量会在作用域内覆盖之前的变量，这会导致在疏忽的情况下用错变量，对阅读代码的人来说也会造成干扰和误导。
+即使是明确要覆盖之前的变量，最好也重新定义一个新的变量，这样可以让别人明确理解到你的意图。</p>
+<p>把代码整理一下再看：</p>
+<div class="highlight"><pre class="chroma"><code class="language-php" data-lang="php">function makeTree($list, $rootId = 0)
+{
+    $tree = array();
+    foreach ($list as $key =&gt; $val) {
+        if ($val[&#39;parent_id&#39;] == $rootId) {
+            unset($list[$key]);
+            if (!empty($list)) {
+                $child = makeTree($list, $val[&#39;id&#39;]);
+                if (!empty($child)) {
+                    $val[&#39;_child&#39;] = $child;
+                }
+            }
+            $tree[] = $val;
+        }
+    }
+    return $tree;
+}
+</code></pre></div><p>这段代码核心逻辑是一个递归操作。
+在遍历列表时，将当前root节点的子节点装入一个数组中返回，对于返回数组中的每一节点，都先用剩下的列表做一遍递归将其子节点挂在自己的<code>_child</code>key下。
+这个方式的问题是有太多无意义的循环，里还有其他操作就会导致效率低下。</p>
+<p>试着改写一下：</p>
+<div class="highlight"><pre class="chroma"><code class="language-php" data-lang="php">function makeTree($list)
+{
+    $hashList = [];
+
+    foreach ($list as $v) {
+        $hashList[$v[&#39;id&#39;]] = $v;
+    }
+
+    $root = [];
+    foreach ($hashList as <span class="err">&amp;</span>$node) {
+        if (!empty($node[&#39;parent_id&#39;])) {
+            $hashList[$node[&#39;parent_id&#39;]][&#39;_child&#39;][] = <span class="ni">&amp;$node;</span>
+        } else {
+            $root[] = <span class="ni">&amp;$node;</span>
+        }
+    }
+
+    return $root;
+}
+</code></pre></div><p>这里和之前的区别就是先进行一次循环将原本list结构的数据转成以id为key的结构，然后通过引用操作就能在一次循环里处理完所有数据。</p>
+<p>这种方式其实是一种比较通用的做法。
+当两个列表要一对一或一对多关系组织结构时，如果直接按照双层循环的方式去处理，时间复杂度是O(n<sup>2</sup>)，数据量一大效率会很差。</p>
+<p>比如这个例子：</p>
+<div class="highlight"><pre class="chroma"><code class="language-php" data-lang="php">$groups = [
+    [&#39;id&#39; =&gt; 1, &#39;name&#39; =&gt; &#39;group_a&#39;],
+    [&#39;id&#39; =&gt; 2, &#39;name&#39; =&gt; &#39;group_b&#39;],
+    [&#39;id&#39; =&gt; 3, &#39;name&#39; =&gt; &#39;group_c&#39;],
+];
+$objects = [
+    [&#39;id&#39; =&gt; 1, &#39;group_id&#39; =&gt; 1],
+    [&#39;id&#39; =&gt; 2, &#39;group_id&#39; =&gt; 1],
+    [&#39;id&#39; =&gt; 3, &#39;group_id&#39; =&gt; 2],
+    [&#39;id&#39; =&gt; 4, &#39;group_id&#39; =&gt; 3],
+    [&#39;id&#39; =&gt; 5, &#39;group_id&#39; =&gt; 3],
+];
+
+$groupMap = [];
+foreach ($groups as $g) {
+    $groupMap[$g[&#39;id&#39;]] = $g;
+}
+
+foreach ($objects as $o) {
+    $groupId = $o[&#39;group_id&#39;];
+    if (!empty($groupMap[$groupId])) {
+        $groupMap[$groupId][&#39;objects&#39;][] = $o;
+    }
+}
+</code></pre></div><p>如果要将<code>$objects</code>里的数据插入对应的group，可以像刚才一样，先将<code>$groups</code>转为以id为key的HashList的形式，这样遍历<code>$objects</code>时就可以以O(1)的效率去访问group。</p>
+<p>这个例子其实是前一个例子的特殊情况。
+前着的树结构是不固定层级的，节点都存储在一个集合里。
+这个例子的树形结构被固定为两层，上层和下层分别存储在不通的集合里。</p>
+<h3 id="核心的思路">核心的思路</h3>
+<p>当我们要经常访问某个数据时，一定要注意访问时的效率。
+如果是复杂结构，可以用缓存索引的方式提高访问效率。
+如果是对一些中间计算值的重复访问，每次访问都隐含了计算操作，就可以通过缓存计算结果的方式提高访问效率。</p>
+</article><section class="article labels"><a class="tag" href=/tags/php/>PHP</a></section></div>
+<div class="article bottom"><section class="article navigation"><p><a class="link" href="/posts/docker-env-20200614/"><span class="iconfont icon-article"></span>用Docker搭建测试环境</a></p></section></div></section><section id="footer"><div class="footer-wrap">
+    <p class="copyright">©2020 NewType0092.</p>
+    <p class="powerby"><span>Powered by </span><a href="https://gohugo.io" 
+        target="_blank">Hugo</a><span> and the </span><a href="https://themes.gohugo.io/hugo-notepadium/" 
+        target="_blank">Notepadium</a></p>
+</div></section><script src="/js/prism.min.28f2bfd6dfaa7ad0e8b973373bb7db234d27a2faafc26d5ffd2de4c2b1b5f2bf80011f2e2976dc9fb364abb13f63ebdc.js" integrity="sha384-KPK/1t&#43;qetDouXM3O7fbI00novqvwm1f/S3kwrG18r&#43;AAR8uKXbcn7Nkq7E/Y&#43;vc"></script></body>
+
+</html>

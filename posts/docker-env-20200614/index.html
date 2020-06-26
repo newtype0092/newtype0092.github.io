@@ -184,7 +184,7 @@ services:
 <li><code>image</code>是这个容器实例化使用的镜像</li>
 <li><code>networks</code>表示将该容器加入虚拟网络</li>
 <li><code>ports</code>表示端口映射，左边为宿主机上的端口，右边为容器内的端口</li>
-<li><code>volumes</code>表示磁盘映射，左边为宿主机上的端口，右边为容器内的端口</li>
+<li><code>volumes</code>表示磁盘文件映射，左边为宿主机上的目录或文件，右边为容器内的目录或文件</li>
 </ul>
 </li>
 </ul>
@@ -195,16 +195,18 @@ Nginx使用了官方的镜像。
 <p>我们将Nginx容器的80端口映射到了宿主机，这样在启动后可以通过<code>http://localhost:8080/</code>访问我们的服务。
 PHP容器不需要从宿主机访问，所以不用配置端口映射，官方容器默认在<code>9000</code>端口启动fpm。</p>
 <p>我们在当前目录下创建了一个<code>phpdir</code>目录，暂时替代PHP项目目录，将这个目录同时挂载在两个镜像的<code>/var/work</code>目录下，方便从外部修改。
-注意这个目录是我们之前创建PHP镜像时在Dockerfile里用<code>WORKDIR</code>命令设置的默认工作目录，如果不手动设置，则应该使用官方镜像里默认的工作目录<code>/var/www/html</code>。</p>
-<p>我们像在该目录下创建一个目录<code>www</code>并写入两个文件测试。
-这个目录结构与我们的PHP项目相同，不是必须的。</p>
+注意这个目录是我们之前创建PHP镜像时在Dockerfile里用<code>WORKDIR</code>命令设置的默认工作目录，如果不手动设置，则应该使用官方镜像里默认的工作目录<code>/var/www/html</code>。
+在该目录下创建一个目录<code>www</code>并写入两个文件测试。</p>
 <pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ cat phpdir/www/index.html
 hello
 ❰newtype0092❙~/test-docker/compose❱✔≻ cat phpdir/www/index.php
 &lt;?php
     phpinfo();
-</code></pre><p>在compose文件所在的目录下使用<code>docker-compose up</code>命令可以启动这个compose。
-<code>-d</code>参数可以是compose在后台运行。</p>
+</code></pre><blockquote>
+<p>这个目录结构与我们的PHP项目相同，不是必须的。</p>
+</blockquote>
+<p>在compose文件所在的目录下使用<code>docker-compose up</code>命令可以启动这个compose。
+<code>-d</code>参数可以让compose在后台运行。</p>
 <pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ docker-compose up
 Creating network &quot;compose_backend&quot; with the default driver
 Creating test-php   ... done
@@ -222,10 +224,10 @@ test-nginx | 172.29.0.1 - - [15/Jun/2020:10:45:00 +0000] &quot;GET / HTTP/1.1&qu
 test-nginx   nginx -g daemon off;            Up      0.0.0.0:8080-&gt;80/tcp
 test-php     docker-php-entrypoint php-fpm   Up      9000/tcp
 </code></pre><p>现在在浏览器打开<code>http://localhost:8080/</code>就可以看到Nginx默认的欢迎页面，我们需要配置Nginx的config文件让请求转发到php-fpm服务。</p>
-<p>使用<code>docker exec</code>命令可以在容器内执行命令，使用<code>-it</code>参数打开一个shell可以让我们在容器内操作，就像用ssh登陆一台虚拟机一样。</p>
-<ul>
-<li>我们使用的Alpine镜像里没有安装<code>bash</code>，只能使用<code>sh</code>。</li>
-</ul>
+<p>使用<code>docker exec</code>命令可以在容器内执行命令，使用<code>-it</code>参数以交互式打开一个shell可以让我们在容器内操作，就像用ssh登陆一台虚拟机一样。</p>
+<blockquote>
+<p>我们使用的Alpine镜像里没有安装<code>bash</code>，只能使用<code>sh</code>。</p>
+</blockquote>
 <pre><code>❰newtype0092❙~/test-docker/compose❱✔≻ docker exec -it test-nginx sh
 / # ls
 bin    dev    etc    home   lib    media  mnt    opt    proc   root   run    sbin   srv    sys    tmp    usr    var
@@ -274,9 +276,14 @@ hello
 <img  src="/images/2020061408.jpg"
         alt/></p>
 <h4 id="映射更多的目录">映射更多的目录</h4>
-<p>TODO</p>
+<p>上面Nginx的例子只是为了说明多个容器在compose管理下的运行方式。</p>
+<blockquote>
+<p>理论上我们不应该在容器中修改任何内容，因为修改compose文件、Dockerfile、更新镜像等任何对配置的修改都会重新创建容器，之前在旧容器里的修改都会和容器一起丢弃。</p>
+</blockquote>
+<p>之前我们为了在Nginx容器和PHP容器之间共享项目文件夹<code>phpdir</code>而将其映射到了宿主机。
+这样做还有一个好处就是我们可以在本地直接修改PHP文件，而不需要进入容器里操作。</p>
 </article><section class="article labels"><a class="tag" href=/tags/docker/>docker</a></section></div>
-<div class="article bottom"><section class="article navigation"><p><a class="link" href="/posts/my-first-post-2/"><span class="iconfont icon-article"></span>Post</a></p></section></div></section><section id="footer"><div class="footer-wrap">
+<div class="article bottom"><section class="article navigation"><p><a class="link" href="/posts/php-reference-var-20200617/"><span class="iconfont icon-article"></span>代码重构</a></p><p><a class="link" href="/posts/markdown-syntax/"><span class="iconfont icon-article"></span>Markdown Syntax Guide</a></p></section></div></section><section id="footer"><div class="footer-wrap">
     <p class="copyright">©2020 NewType0092.</p>
     <p class="powerby"><span>Powered by </span><a href="https://gohugo.io" 
         target="_blank">Hugo</a><span> and the </span><a href="https://themes.gohugo.io/hugo-notepadium/" 

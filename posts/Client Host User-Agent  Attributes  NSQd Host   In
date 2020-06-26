@@ -1,0 +1,20 @@
+Client Host User-Agent  Attributes  NSQd Host   In-Flight   Ready Count Finished    Requeued    Messages    Connected
+panda-pre:19427 go-nsq/1.0.7        172.17.209.127:4151 0   1   78,783  8   78,791  1h2m3s
+panda-pre:24558 go-nsq/1.0.7        172.17.209.127:4151 0   1   0   0   0   25s
+
+
+uuid 227640611031746173
+
+
+
+curl -H "Content-Type:application/json" -X POST --data '{"topic_name": "pre_user_play", "source_app_id": 8, "publish_time": 1592288280, "exec_time": 1592288280, "event_type": "play_start", "msg_body": {"event_type": "play_start", "service_id": 3, "source_app_id": 8, "uuid": "227640611031746173", "lesson_id": 2333, "score_id": 5348, "hand": 3, "practice_mode": 1, "ui_entry": 2, "input_type": 2, "audio_url": null, "created_at": 1592288280392, "duration": 0.0, "record_id": -1, "phrase_id": -1, "is_phrase": 0, "phrase_name": 0, "score_final": 0.0, "score_complete": 0.0, "score_pitch": 0.0, "score_rhythm": 0.0, "score_speed": 0.0, "score_speed_average": 0.0, "data_type": 2, "track_id": "1000000001"}}' http://dss-pre.xiongmaopeilian.com/api/consumer/pre_user_play
+
+curl -H "Content-Type:application/json" -X POST --data '{"topic_name": "pre_user_play", "source_app_id": 8, "publish_time": 1592288340, "exec_time": 1592288340, "event_type": "play_heart_beat", "msg_body": {"event_type": "play_heart_beat", "service_id": 3, "source_app_id": 8, "uuid": "227640611031746173", "lesson_id": 2333, "score_id": 5348, "hand": 3, "practice_mode": 1, "ui_entry": 2, "input_type": 2, "audio_url": null, "created_at": 1592288280392, "duration": 30.16, "record_id": -1, "phrase_id": 1, "is_phrase": 0, "phrase_name": null, "score_final": 0.0, "score_complete": 0.0, "score_pitch": 0.0, "score_rhythm": 0.0, "score_speed": 0.0, "score_speed_average": 0.0, "data_type": 2, "track_id": "1000000001"}}' http://dss-pre.xiongmaopeilian.com/api/consumer/pre_user_play
+
+
+
+curl -H "Content-Type:application/json" -X POST --data '{"topic_name": "pre_user_play", "source_app_id": 8, "publish_time": 1592288340, "exec_time": 1592288340, "event_type": "play_heart_beat", "msg_body": {"event_type": "play_heart_beat", "service_id": 3, "source_app_id": 8, "uuid": "227640611031746173", "lesson_id": 2333, "score_id": 5348, "hand": 3, "practice_mode": 1, "ui_entry": 2, "input_type": 2, "audio_url": null, "created_at": 1592288280392, "duration": 60.16, "record_id": -1, "phrase_id": 1, "is_phrase": 0, "phrase_name": null, "score_final": 0.0, "score_complete": 0.0, "score_pitch": 0.0, "score_rhythm": 0.0, "score_speed": 0.0, "score_speed_average": 0.0, "data_type": 2, "track_id": "1000000001"}}' http://dss-pre.xiongmaopeilian.com/api/consumer/pre_user_play
+
+
+curl -H "Content-Type:application/json" -X POST --data '{"topic_name": "pre_user_play", "source_app_id": 8, "publish_time": 1592288340, "exec_time": 1592288340, "event_type": "play_heart_beat", "msg_body": {"event_type": "play_heart_beat", "service_id": 3, "source_app_id": 8, "uuid": "227640611031746173", "lesson_id": 2333, "score_id": 5348, "hand": 3, "practice_mode": 1, "ui_entry": 2, "input_type": 2, "audio_url": null, "created_at": 1592288280392, "duration": 90.16, "record_id": -1, "phrase_id": 1, "is_phrase": 0, "phrase_name": null, "score_final": 0.0, "score_complete": 0.0, "score_pitch": 0.0, "score_rhythm": 0.0, "score_speed": 0.0, "score_speed_average": 0.0, "data_type": 2, "track_id": "1000000001"}}' http://dss-pre.xiongmaopeilian.com/api/consumer/pre_user_play
+
